@@ -1,25 +1,25 @@
 # xKiro Discord Auto-Chat
 
-A hands-free Discord chatbot powered by xKiro with automatic task-based model routing. Configure one text channel by **channel ID**; people just talk normally—no slash commands, bot mentions, or prefix required.
+A hands-free Discord chatbot powered by xKiro. Configure one text channel by **channel ID**; people just talk normally—no slash commands, bot mentions, or prefix required. Choose a model; xKiro automatically routes requests across providers and handles route failover.
 
-**Try xKiro:** [Sign up with Julien's referral link](https://xkiro.com/ref/D6J4DHK)
+Built with [xKiro](https://xkiro.com), one API for leading AI models.
 
 ## How the chat works
 
 - `DISCORD_CHANNEL_ID` routes messages from exactly one channel to this bot.
-- By default, the channel is one shared group conversation: everyone sees the same replies and the bot can use recent messages from everyone in that channel as context. Set `CHAT_CONTEXT_MODE=per_user` for private per-user context instead.
+- By default, the channel is one shared group conversation: everyone sees the same replies and the bot can use recent messages from everyone in that channel as context. Set `CHAT_CONTEXT_MODE=per_user` for separate per-user context instead.
 - Context is stored in a local SQLite file so it survives bot restarts; it expires after 24 hours by default.
 - `!reset` clears this channel's saved context (or only the caller's context in `per_user` mode); deleting `chats.sqlite3` clears all history and usage counters.
 - Other channels are ignored. Bot messages are ignored, preventing loops.
 - A daily per-user request cap protects the bot owner's xKiro balance.
-- The xKiro model catalogue is cached briefly and ranked by task: coding, reasoning, translation, creative, or general chat. The router prefers free models when available and uses configured fallbacks when a model is unavailable. It never retries authentication, quota, or rate-limit errors across models. `MAX_ROUTING_ATTEMPTS` bounds billable attempts per message, and each reply identifies the selected model.
+- The `XKIRO_MODEL` value is the model you want. xKiro handles automatic provider-route selection and failover for that requested model behind its gateway. Optionally configure a different model ID as a fallback if that model itself is unavailable; that's a separate model change.
 - `!reset` is the only control message; otherwise chat is automatic.
 
 ## Create the Discord bot
 
 1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications), add a bot, and copy its bot token.
 2. Under **Bot → Privileged Gateway Intents**, enable **Message Content Intent**. Discord requires this to read normal messages; the code ignores every channel except the one configured by ID.
-3. Invite it with the `bot` scope and only these channel permissions: **View Channel**, **Send Messages**, **Read Message History**, and **Use External Apps** if needed to send typing status. It does not need Administrator.
+3. Invite it with the `bot` scope and only these channel permissions: **View Channel**, **Send Messages**, and **Read Message History**. It does not need Administrator.
 4. In Discord, enable Developer Mode, right-click the dedicated channel, and choose **Copy Channel ID**.
 
 ## Run it
@@ -37,7 +37,7 @@ notepad .env
 python bot.py
 ```
 
-Set `DISCORD_TOKEN`, `XKIRO_API_KEY`, and `DISCORD_CHANNEL_ID` in `.env`. Leave `XKIRO_MODEL=auto` to enable automatic routing. `XKIRO_DEFAULT_MODEL` is the first reliable fallback; add comma-separated `XKIRO_FALLBACK_MODELS` if desired. Model IDs and access tiers come from xKiro's live catalogue. `403`/`404` model failures are cooled down for ten minutes; transient server errors are cooled down for one minute. Authentication, balance, and rate-limit errors stop immediately so the bot does not waste requests. `MAX_ROUTING_ATTEMPTS` limits billable tries per message.
+Set `DISCORD_TOKEN`, `XKIRO_API_KEY`, and `DISCORD_CHANNEL_ID` in `.env`. Choose one exact `XKIRO_MODEL`, for example `openai/gpt-5.6-sol`. xKiro automatically routes requests for that model across provider routes and performs its own failover. The bot can optionally try comma-separated `XKIRO_FALLBACK_MODELS` if that model itself is unavailable. Browse IDs at <https://api.xkiro.com/v1/models>.
 
 `CHAT_CONTEXT_MODE=shared` is best for a public community lounge. All channel participants are included in the same conversation, so clearly disclose this and do not use it for private support. `CHAT_CONTEXT_MODE=per_user` keeps contexts separate if users need privacy.
 
@@ -49,6 +49,10 @@ Keep the process running on a computer or VPS. If publishing the source, other p
 
 Chats from the configured channel go to xKiro for model inference. Tell server members the channel is processed by an AI service. The bot stores user IDs and chat messages locally until the configured history TTL expires; usage totals are retained by UTC day for quota enforcement.
 
+## xKiro model routing
+
+Set the model ID you want in `XKIRO_MODEL`. xKiro's gateway automatically selects the provider route for that model and fails over to another route for the same model when available. The response still identifies the model you requested. Optionally, `XKIRO_FALLBACK_MODELS` lists different model IDs for the bot to try if your selected model itself is unavailable. This is a separate model fallback, not xKiro's provider auto-routing. Authentication, balance, and rate-limit errors are not retried by the bot.
+
 ## Test
 
 ```powershell
@@ -59,7 +63,7 @@ Tests use a temporary SQLite database and mock Discord/xKiro calls. No credentia
 
 ## xKiro referral
 
-New users can [sign up for xKiro here](https://xkiro.com/ref/D6J4DHK).
+This project uses [xKiro](https://xkiro.com), an AI model gateway. If you want to try it, [sign up through the author's referral link](https://xkiro.com/ref/D6J4DHK).
 
 ## License
 

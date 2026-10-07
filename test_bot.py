@@ -58,28 +58,7 @@ class DiscordAutoChatTests(unittest.TestCase):
         self.assertEqual(history[2]["content"], "Hi Alex")
         self.assertEqual(history[3]["content"], "Hi Sam")
 
-    def test_task_router_prioritizes_code_and_reasoning_models(self):
-        catalog = [
-            {"id": "plain/general", "capabilities": {"reasoning": False}, "access_tier": "paid"},
-            {"id": "qwen/coder-free:free", "capabilities": {"reasoning": False}, "access_tier": "free"},
-            {"id": "reason/deep", "capabilities": {"reasoning": True}, "access_tier": "paid"},
-        ]
-        with patch.object(bot, "XKIRO_DEFAULT_MODEL", "plain/general"), patch.object(bot, "XKIRO_FALLBACK_MODELS", []), patch.dict(bot.model_cooldowns, {}, clear=True):
-            coding = bot.rank_models(catalog, [{"role": "user", "content": "Please debug this python code"}])
-            reasoning = bot.rank_models(catalog, [{"role": "user", "content": "Compare these and explain why step by step"}])
-        self.assertEqual(coding[0], "qwen/coder-free:free")
-        self.assertEqual(reasoning[0], "reason/deep")
-
-    def test_router_prefers_selected_task_model_then_default_fallback(self):
-        catalog = [
-            {"id": "code/model", "capabilities": {}, "access_tier": "free"},
-            {"id": "general/model", "capabilities": {"tools": True}, "access_tier": "paid"},
-        ]
-        with patch.object(bot, "XKIRO_DEFAULT_MODEL", "preferred/default"), patch.object(bot, "XKIRO_FALLBACK_MODELS", ["backup/one"]), patch.dict(bot.model_cooldowns, {}, clear=True):
-            result = bot.rank_models(catalog, [{"role": "user", "content": "debug this python"}])
-        self.assertEqual(result[:3], ["code/model", "preferred/default", "backup/one"])
-
-    def test_auto_router_falls_back_when_a_model_is_unavailable(self):
+    def test_model_fallback_tries_other_model_when_selected_model_fails(self):
         class Response:
             def __init__(self, status, content=None):
                 self.status_code = status
@@ -108,7 +87,7 @@ class DiscordAutoChatTests(unittest.TestCase):
 
         async def scenario():
             client = Client()
-            with patch.object(bot, "XKIRO_API_KEY", "unit-test-key"), patch.object(bot, "model_candidates", new=AsyncMock(return_value=["unavailable/model", "working/model"])), patch.object(bot.httpx, "AsyncClient", return_value=client):
+            with patch.object(bot, "XKIRO_API_KEY", "unit-test-key"), patch.object(bot, "XKIRO_MODEL", "unavailable/model"), patch.object(bot, "XKIRO_FALLBACK_MODELS", ["working/model"]), patch.object(bot.httpx, "AsyncClient", return_value=client):
                 return await bot.xkiro_chat([{"role": "user", "content": "hello"}]), client.calls
 
         (answer, model), calls = asyncio.run(scenario())
@@ -116,7 +95,7 @@ class DiscordAutoChatTests(unittest.TestCase):
         self.assertEqual(model, "working/model")
         self.assertEqual(calls, ["unavailable/model", "working/model"])
 
-    def test_auto_router_does_not_fallback_on_invalid_credentials(self):
+    def test_model_fallback_does_not_retry_invalid_credentials(self):
         class Response:
             status_code = 401
 
@@ -136,7 +115,7 @@ class DiscordAutoChatTests(unittest.TestCase):
 
         async def scenario():
             client = Client()
-            with patch.object(bot, "XKIRO_API_KEY", "unit-test-key"), patch.object(bot, "model_candidates", new=AsyncMock(return_value=["model/one", "model/two"])), patch.object(bot.httpx, "AsyncClient", return_value=client):
+            with patch.object(bot, "XKIRO_API_KEY", "unit-test-key"), patch.object(bot, "XKIRO_MODEL", "model/one"), patch.object(bot, "XKIRO_FALLBACK_MODELS", ["model/two"]), patch.object(bot.httpx, "AsyncClient", return_value=client):
                 with self.assertRaisesRegex(RuntimeError, "rejected the API key"):
                     await bot.xkiro_chat([{"role": "user", "content": "hello"}])
             return client.calls
