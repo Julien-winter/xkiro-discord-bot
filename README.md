@@ -27,6 +27,7 @@ A hands-free Discord chatbot powered by xKiro with automatic task-based model ro
 Python 3.10+:
 
 ```powershell
+git clone https://github.com/Julien-winter/xkiro-discord-bot.git
 cd xkiro-discord-bot
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
