@@ -2,7 +2,7 @@
 
 A hands-free Discord chatbot powered by xKiro. Configure one text channel by **channel ID**; people just talk normally—no slash commands, bot mentions, or prefix required. Choose a model; xKiro automatically routes requests across providers and handles route failover.
 
-Built with [xKiro](https://xkiro.com), one API for leading AI models.
+Built with [xKiro](https://xkiro.com/ref/D6J4DHK), one API for leading AI models.
 
 ## How the chat works
 
@@ -56,14 +56,10 @@ Set the model ID you want in `XKIRO_MODEL`. xKiro's gateway automatically select
 ## Test
 
 ```powershell
-python -m unittest -v
+python -m py_compile bot.py
 ```
 
-Tests use a temporary SQLite database and mock Discord/xKiro calls. No credentials or paid requests are needed.
-
-## xKiro referral
-
-This project uses [xKiro](https://xkiro.com), an AI model gateway. If you want to try it, [sign up through the author's referral link](https://xkiro.com/ref/D6J4DHK).
+This syntax check needs no Discord credentials and makes no xKiro requests.
 
 ## License
 
